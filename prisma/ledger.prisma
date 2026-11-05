@@ -1,0 +1,30 @@
+model Wallet {
+  id        String   @id @db.Uuid
+  holderId  String   @map("holder_id") @db.Uuid
+  currency  String   @db.Char(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  entries   Entry[]
+
+  @@unique([holderId, currency])
+  @@map("wallet")
+  @@schema("ledger")
+}
+
+model Entry {
+  id        String         @id @db.Uuid
+  walletId  String         @map("wallet_id") @db.Uuid
+  direction EntryDirection
+  amount    BigInt
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  wallet    Wallet         @relation(fields: [walletId], references: [id])
+
+  @@map("entry")
+  @@schema("ledger")
+}
+
+enum EntryDirection {
+  DEBIT
+  CREDIT
+
+  @@schema("ledger")
+}

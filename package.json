@@ -1,0 +1,71 @@
+{
+	"name": "keewe-ledger",
+	"version": "0.0.1",
+	"description": "Keewe Ledger · cas pratique",
+	"private": true,
+	"license": "UNLICENSED",
+	"type": "module",
+	"engines": {
+		"node": ">=26"
+	},
+	"scripts": {
+		"postinstall": "prisma generate",
+		"build": "tsc -p tsconfig.build.json",
+		"start": "npm run build && node --env-file-if-exists=.env dist/main.js",
+		"start:dev": "npm run build && concurrently -k -n tsc,app \"tsc -p tsconfig.build.json --watch --preserveWatchOutput\" \"node --env-file-if-exists=.env --watch dist/main.js\"",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"check": "npm run lint && npm run typecheck && npm test",
+		"db:up": "docker compose up -d --wait",
+		"db:down": "docker compose down -v",
+		"db:migrate": "prisma migrate dev",
+		"db:reset": "npm run db:down && npm run db:up && prisma migrate deploy && prisma db seed",
+		"db:seed": "prisma db seed",
+		"db:studio": "prisma studio",
+		"test": "vitest run",
+		"test:unit": "vitest run --project unit --passWithNoTests",
+		"test:integration": "vitest run --project integration",
+		"test:watch": "vitest"
+	},
+	"dependencies": {
+		"@nestjs/common": "12.3.2",
+		"@nestjs/core": "12.3.2",
+		"@nestjs/platform-express": "12.3.2",
+		"@nestjs/swagger": "12.1.0",
+		"@prisma/adapter-pg": "7.10.1",
+		"@prisma/client": "7.10.1",
+		"class-transformer": "0.5.1",
+		"class-validator": "0.15.1",
+		"pg": "8.23.1",
+		"reflect-metadata": "0.2.2",
+		"rxjs": "7.8.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.6.4",
+		"@nestjs/testing": "12.3.2",
+		"@testcontainers/postgresql": "12.2.1",
+		"@types/express": "5.0.6",
+		"@types/node": "26.6.6",
+		"@types/pg": "8.23.1",
+		"@types/supertest": "7.2.1",
+		"concurrently": "10.0.6",
+		"dotenv": "18.0.9",
+		"prisma": "7.10.1",
+		"supertest": "7.3.1",
+		"testcontainers": "12.2.1",
+		"tsx": "4.23.15",
+		"typescript": "6.0.3",
+		"vitest": "5.1.0"
+	},
+	"allowScripts": {
+		"cpu-features": false,
+		"esbuild": false,
+		"prisma": false,
+		"protobufjs": false,
+		"ssh2": false,
+		"@prisma/engines": false,
+		"@scarf/scarf": false,
+		"fsevents": false
+	}
+}
