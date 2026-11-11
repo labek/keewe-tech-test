@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { Entry, EntryDirection } from '../domain/entry.js';
-import type { Wallet } from '../domain/wallet.js';
+import type { Entry, EntryDirection } from '../../../domain/models/entities/entry.js';
+import type { Wallet } from '../../../domain/models/entities/wallet.js';
 
 export class WalletResponse {
 	@ApiProperty({ type: String, format: 'uuid' })
@@ -12,7 +12,11 @@ export class WalletResponse {
 	@ApiProperty({ type: String, example: 'EUR' })
 	readonly currency: string;
 
-	@ApiProperty({ type: String, example: '1500000', description: 'Balance in minor units' })
+	@ApiProperty({
+		type: String,
+		example: '1500000',
+		description: 'Balance in minor units',
+	})
 	readonly balance: string;
 
 	constructor(wallet: Wallet) {
@@ -30,7 +34,11 @@ export class EntryResponse {
 	@ApiProperty({ enum: ['DEBIT', 'CREDIT'] })
 	readonly direction: EntryDirection;
 
-	@ApiProperty({ type: String, example: '1050', description: 'Positive amount in minor units' })
+	@ApiProperty({
+		type: String,
+		example: '1050',
+		description: 'Positive amount in minor units',
+	})
 	readonly amount: string;
 
 	@ApiProperty({ type: String, format: 'date-time' })

@@ -1,16 +1,16 @@
 import { Controller, Get, Inject, Param, ParseUUIDPipe, UseFilters } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiNotFoundResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { WalletService } from '../application/wallet.service.js';
-import { EntryResponse, WalletResponse } from './wallet.response.js';
-import { WalletNotFoundFilter } from './wallet-not-found.filter.js';
+import { WalletUseCase } from '../../application/use-cases/wallet.use-case.js';
+import { EntryResponse, WalletResponse } from '../dto/output/wallet.response.js';
+import { WalletNotFoundFilter } from '../filters/wallet-not-found.filter.js';
 
 @ApiTags('Wallets')
 @Controller('wallets')
 @UseFilters(WalletNotFoundFilter)
 export class WalletController {
-	readonly #wallets: WalletService;
+	readonly #wallets: WalletUseCase;
 
-	constructor(@Inject(WalletService) wallets: WalletService) {
+	constructor(@Inject(WalletUseCase) wallets: WalletUseCase) {
 		this.#wallets = wallets;
 	}
 

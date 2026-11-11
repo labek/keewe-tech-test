@@ -1,14 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { Entry } from '../domain/entry.js';
-import type { Wallet } from '../domain/wallet.js';
-import { WalletRepository } from '../domain/wallet.repository.js';
-import { WalletNotFoundError } from '../domain/wallet-not-found.error.js';
+import { WalletNotFoundError } from '../../domain/errors/wallet-not-found.error.js';
+import type { Entry } from '../../domain/models/entities/entry.js';
+import type { Wallet } from '../../domain/models/entities/wallet.js';
+import { WalletPort } from '../../domain/ports/wallet.port.js';
 
 @Injectable()
-export class WalletService {
-	readonly #wallets: WalletRepository;
+export class WalletUseCase {
+	readonly #wallets: WalletPort;
 
-	constructor(@Inject(WalletRepository) wallets: WalletRepository) {
+	constructor(@Inject(WalletPort) wallets: WalletPort) {
 		this.#wallets = wallets;
 	}
 

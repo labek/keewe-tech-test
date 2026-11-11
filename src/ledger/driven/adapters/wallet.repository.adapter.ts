@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PrismaClient } from '../../shared/driven/prisma/generated/client.js';
-import { Entry, type EntryDirection } from '../domain/entry.js';
-import { Wallet } from '../domain/wallet.js';
-import type { WalletRepository } from '../domain/wallet.repository.js';
+import { PrismaClient } from '../../../shared/driven/prisma/generated/client.js';
+import { Entry, EntryDirection } from '../../domain/models/entities/entry.js';
+import { Wallet } from '../../domain/models/entities/wallet.js';
+import type { WalletPort } from '../../domain/ports/wallet.port.js';
 
 @Injectable()
-export class PrismaWalletRepository implements WalletRepository {
+export class WalletRepositoryAdapter implements WalletPort {
 	readonly #prisma: PrismaClient;
 
 	constructor(@Inject(PrismaClient) prisma: PrismaClient) {
@@ -15,7 +15,11 @@ export class PrismaWalletRepository implements WalletRepository {
 	async findById(walletId: string): Promise<Wallet | null> {
 		const [row, totals] = await Promise.all([
 			this.#prisma.wallet.findUnique({ where: { id: walletId } }),
-			this.#prisma.entry.groupBy({ by: ['direction'], where: { walletId }, _sum: { amount: true } }),
+			this.#prisma.entry.groupBy({
+				by: ['direction'],
+				where: { walletId },
+				_sum: { amount: true },
+			}),
 		]);
 		const total = (direction: EntryDirection) => totals.find((sum) => sum.direction === direction)?._sum.amount ?? 0n;
 

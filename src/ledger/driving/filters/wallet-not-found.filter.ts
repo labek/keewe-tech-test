@@ -1,6 +1,6 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpStatus } from '@nestjs/common';
 import type { Response } from 'express';
-import { WalletNotFoundError } from '../domain/wallet-not-found.error.js';
+import { WalletNotFoundError } from '../../domain/errors/wallet-not-found.error.js';
 
 @Catch(WalletNotFoundError)
 export class WalletNotFoundFilter implements ExceptionFilter {
