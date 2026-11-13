@@ -63,8 +63,8 @@ Un test part donc toujours d'une base vide et prépare lui-même ses données, p
 | Niveau                                                 | Suffixe                 | Projet Vitest |
 | ------------------------------------------------------ | ----------------------- | ------------- |
 | Unitaire, sans infrastructure                          | `*.spec.ts`             | `unit`        |
-| Intégration : un adapter, sur la vraie base            | `*.integration-spec.ts` | `integration` |
-| End-to-end : l'application démarrée depuis `AppModule` | `*.e2e-spec.ts`         | `integration` |
+| Intégration : un adapter, sur la vraie base            | `*.integration.spec.ts` | `integration` |
+| End-to-end : l'application démarrée depuis `AppModule` | `*.e2e.spec.ts`         | `integration` |
 
 ## Structure
 
