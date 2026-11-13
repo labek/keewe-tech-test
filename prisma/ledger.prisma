@@ -2,29 +2,43 @@ model Wallet {
   id        String   @id @db.Uuid
   holderId  String   @map("holder_id") @db.Uuid
   currency  String   @db.Char(3)
+  balance   BigInt
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  entries   Entry[]
+  transfers Transfer[]
 
   @@unique([holderId, currency])
   @@map("wallet")
   @@schema("ledger")
 }
 
-model Entry {
-  id        String         @id @db.Uuid
-  walletId  String         @map("wallet_id") @db.Uuid
-  direction EntryDirection
-  amount    BigInt
-  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
-  wallet    Wallet         @relation(fields: [walletId], references: [id])
+model Transfer {
+  id                String          @id @db.Uuid
+  walletId          String          @map("wallet_id") @db.Uuid
+  idempotencyKeyId  String          @map("idempotency_key_id") @db.Uuid
+  direction         Direction
+  amount            BigInt
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  wallet            Wallet          @relation(fields: [walletId], references: [id])
+  idempotencyKey    IdempotencyKey  @relation(fields: [idempotencyKeyId], references: [id])
 
-  @@map("entry")
+  @@map("transfer")
   @@schema("ledger")
 }
 
-enum EntryDirection {
+enum Direction {
   DEBIT
   CREDIT
 
+  @@schema("ledger")
+}
+
+model IdempotencyKey {
+  id          String   @id @db.Uuid
+  fingerprint String   @db.Char(64) @unique(map: "idempotency_key_fingerprint_unique")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  transfers   Transfer[]
+
+  @@unique([id, fingerprint])
+  @@map("idempotency_key")
   @@schema("ledger")
 }
