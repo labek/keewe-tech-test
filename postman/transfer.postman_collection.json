@@ -1,0 +1,473 @@
+{
+	"info": {
+		"_postman_id": "7c1a0b2e-6d4f-47a1-9c3e-2f8a1b6d0e41",
+		"name": "Keewe Ledger · Transfers",
+		"description": "Une requête `POST /transfers` par critère d'acceptation du ticket.\n\nPrérequis : `npm run db:reset`, puis l'API sur `http://localhost:3000`. Exécuter les requêtes dans l'ordre : les clés d'idempotence et les soldes du seed ne sont valables qu'une fois.\n\nWallets du seed :\n- Martin EUR `01970000-0000-7000-8000-0000000000a1` — 1 500 000\n- Martin USD `01970000-0000-7000-8000-0000000000a2` — 200 000\n- Durand EUR `01970000-0000-7000-8000-0000000000b1` — 250 000\n- Nova EUR `01970000-0000-7000-8000-0000000000c1` — 0\n- Nova USD `01970000-0000-7000-8000-0000000000c2` — 500 000\n\nLe corps attend `debtorWalletId`, `creditorWalletId` et `amount` (chaîne, unités mineures). La clé de demande est le header `Idempotency-Key` (UUID v7).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000"
+		},
+		{
+			"key": "martinEurWallet",
+			"value": "01970000-0000-7000-8000-0000000000a1"
+		},
+		{
+			"key": "martinUsdWallet",
+			"value": "01970000-0000-7000-8000-0000000000a2"
+		},
+		{
+			"key": "durandEurWallet",
+			"value": "01970000-0000-7000-8000-0000000000b1"
+		},
+		{
+			"key": "novaEurWallet",
+			"value": "01970000-0000-7000-8000-0000000000c1"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Virement dans la même devise",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"const transfers = pm.response.json();",
+							"",
+							"pm.test('le virement est accepté', function () {",
+							"    pm.response.to.have.status(201);",
+							"    pm.expect(transfers).to.be.an('array').with.lengthOf(2);",
+							"});",
+							"",
+							"pm.test('la réponse contient le débit et le crédit du même montant', function () {",
+							"    const debit = transfers.find((row) => row.direction === 'DEBIT');",
+							"    const credit = transfers.find((row) => row.direction === 'CREDIT');",
+							"    pm.expect(debit).to.be.an('object');",
+							"    pm.expect(credit).to.be.an('object');",
+							"    pm.expect(debit.amount).to.eql('1050');",
+							"    pm.expect(credit.amount).to.eql('1050');",
+							"    pm.expect(debit.idempotencyKeyId).to.eql('01970000-0000-7000-8000-000000000301');",
+							"    pm.expect(credit.idempotencyKeyId).to.eql('01970000-0000-7000-8000-000000000301');",
+							"});",
+							"",
+							"const baseUrl = pm.collectionVariables.get('baseUrl');",
+							"const debtor = await pm.sendRequest(baseUrl + '/wallets/' + pm.collectionVariables.get('martinEurWallet'));",
+							"const creditor = await pm.sendRequest(baseUrl + '/wallets/' + pm.collectionVariables.get('durandEurWallet'));",
+							"",
+							"pm.test('les deux soldes sont à jour', function () {",
+							"    pm.expect(debtor).to.have.property('code', 200);",
+							"    pm.expect(creditor).to.have.property('code', 200);",
+							"    pm.expect(debtor.json().balance).to.eql('1498950');",
+							"    pm.expect(creditor.json().balance).to.eql('251050');",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "01970000-0000-7000-8000-000000000301",
+						"description": "UUID v7 identifiant la demande"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"debtorWalletId\": \"{{martinEurWallet}}\",\n  \"creditorWalletId\": \"{{durandEurWallet}}\",\n  \"amount\": \"1050\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseUrl}}/transfers",
+				"description": "Critère 1. Un virement débite le wallet source et crédite le wallet destination de la même devise. Les deux soldes sont à jour dès la réponse : Martin EUR 1 498 950, Durand EUR 251 050."
+			}
+		},
+		{
+			"name": "2. Débit au-delà du solde",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('un débit au-delà du solde est refusé', function () {",
+							"    pm.response.to.have.status(422);",
+							"    pm.expect(pm.response.json().title).to.eql('Wallet Insufficient Fund');",
+							"});",
+							"",
+							"const baseUrl = pm.collectionVariables.get('baseUrl');",
+							"const body = JSON.stringify({",
+							"    debtorWalletId: pm.collectionVariables.get('novaEurWallet'),",
+							"    creditorWalletId: pm.collectionVariables.get('durandEurWallet'),",
+							"    amount: '1',",
+							"});",
+							"const keys = ['01970000-0000-7000-8000-000000000312', '01970000-0000-7000-8000-000000000322'];",
+							"const responses = await Promise.all(keys.map((key) => pm.sendRequest({",
+							"    url: baseUrl + '/transfers',",
+							"    method: 'POST',",
+							"    header: {",
+							"        'Content-Type': 'application/json',",
+							"        'Idempotency-Key': key,",
+							"    },",
+							"    body: { mode: 'raw', raw: body },",
+							"})));",
+							"",
+							"pm.test('deux débits simultanés au-delà du solde sont refusés', function () {",
+							"    pm.expect(responses.map((response) => response.code)).to.eql([422, 422]);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "01970000-0000-7000-8000-000000000302",
+						"description": "UUID v7 identifiant la demande"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"debtorWalletId\": \"{{novaEurWallet}}\",\n  \"creditorWalletId\": \"{{durandEurWallet}}\",\n  \"amount\": \"1\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseUrl}}/transfers",
+				"description": "Critère 2. Nova EUR est à 0. Un débit, y compris deux débits partis en même temps, est refusé (422 Wallet Insufficient Fund) et ne crée aucun mouvement."
+			}
+		},
+		{
+			"name": "3. Rejeu de la même demande",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"const first = pm.response.json();",
+							"",
+							"pm.test('la première demande est acceptée', function () {",
+							"    pm.response.to.have.status(201);",
+							"    pm.expect(first).to.be.an('array').with.lengthOf(2);",
+							"});",
+							"",
+							"const replay = await pm.sendRequest({",
+							"    url: pm.collectionVariables.get('baseUrl') + '/transfers',",
+							"    method: 'POST',",
+							"    header: {",
+							"        'Content-Type': 'application/json',",
+							"        'Idempotency-Key': '01970000-0000-7000-8000-000000000303',",
+							"    },",
+							"    body: {",
+							"        mode: 'raw',",
+							"        raw: JSON.stringify({",
+							"            debtorWalletId: pm.collectionVariables.get('martinEurWallet'),",
+							"            creditorWalletId: pm.collectionVariables.get('durandEurWallet'),",
+							"            amount: '2100',",
+							"        }),",
+							"    },",
+							"});",
+							"",
+							"pm.test('le rejeu renvoie la même réponse', function () {",
+							"    pm.expect(replay).to.have.property('code', 201);",
+							"    pm.expect(replay.json()).to.eql(first);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "01970000-0000-7000-8000-000000000303",
+						"description": "UUID v7 identifiant la demande"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"debtorWalletId\": \"{{martinEurWallet}}\",\n  \"creditorWalletId\": \"{{durandEurWallet}}\",\n  \"amount\": \"2100\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseUrl}}/transfers",
+				"description": "Critère 3. La même clé et le même corps sont envoyés deux fois. Le virement n'est exécuté qu'une fois et les deux réponses sont identiques."
+			}
+		},
+		{
+			"name": "4. Clé réutilisée pour un autre virement",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"await pm.sendRequest({",
+							"    url: pm.collectionVariables.get('baseUrl') + '/transfers',",
+							"    method: 'POST',",
+							"    header: {",
+							"        'Content-Type': 'application/json',",
+							"        'Idempotency-Key': '01970000-0000-7000-8000-000000000304',",
+							"    },",
+							"    body: {",
+							"        mode: 'raw',",
+							"        raw: JSON.stringify({",
+							"            debtorWalletId: pm.collectionVariables.get('martinEurWallet'),",
+							"            creditorWalletId: pm.collectionVariables.get('durandEurWallet'),",
+							"            amount: '1000',",
+							"        }),",
+							"    },",
+							"});"
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('une clé réutilisée pour un autre virement est refusée', function () {",
+							"    pm.response.to.have.status(422);",
+							"    pm.expect(pm.response.json().title).to.eql('Idempotency Key Different Payload');",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "01970000-0000-7000-8000-000000000304",
+						"description": "UUID v7 identifiant la demande"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"debtorWalletId\": \"{{martinEurWallet}}\",\n  \"creditorWalletId\": \"{{durandEurWallet}}\",\n  \"amount\": \"2000\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseUrl}}/transfers",
+				"description": "Critère 4. La clé est d'abord consommée pour un virement de 1 000, puis réutilisée pour un virement de 2 000. La seconde demande est refusée (422 Idempotency Key Different Payload)."
+			}
+		},
+		{
+			"name": "5. Paiements croisés",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('le virement Martin vers Durand est accepté', function () {",
+							"    pm.response.to.have.status(201);",
+							"    pm.expect(pm.response.json()).to.be.an('array').with.lengthOf(2);",
+							"});",
+							"",
+							"const reverse = await pm.sendRequest({",
+							"    url: pm.collectionVariables.get('baseUrl') + '/transfers',",
+							"    method: 'POST',",
+							"    header: {",
+							"        'Content-Type': 'application/json',",
+							"        'Idempotency-Key': '01970000-0000-7000-8000-000000000306',",
+							"    },",
+							"    body: {",
+							"        mode: 'raw',",
+							"        raw: JSON.stringify({",
+							"            debtorWalletId: pm.collectionVariables.get('durandEurWallet'),",
+							"            creditorWalletId: pm.collectionVariables.get('martinEurWallet'),",
+							"            amount: '700',",
+							"        }),",
+							"    },",
+							"});",
+							"",
+							"pm.test('le virement Durand vers Martin est accepté', function () {",
+							"    pm.expect(reverse).to.have.property('code', 201);",
+							"    const rows = reverse.json();",
+							"    pm.expect(rows).to.be.an('array').with.lengthOf(2);",
+							"    pm.expect(rows.map((row) => row.direction).sort()).to.eql(['CREDIT', 'DEBIT']);",
+							"    pm.expect(rows.every((row) => row.amount === '700')).to.eql(true);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "01970000-0000-7000-8000-000000000305",
+						"description": "UUID v7 identifiant la demande"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"debtorWalletId\": \"{{martinEurWallet}}\",\n  \"creditorWalletId\": \"{{durandEurWallet}}\",\n  \"amount\": \"500\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseUrl}}/transfers",
+				"description": "Critère 5. Martin paie Durand (500) et Durand paie Martin (700). Les deux virements aboutissent, y compris lorsqu'ils partent en même temps. Le script envoie le second virement pendant le test."
+			}
+		},
+		{
+			"name": "6. Devises différentes",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test('un virement entre deux devises est refusé', function () {",
+							"    pm.response.to.have.status(422);",
+							"    pm.expect(pm.response.json().title).to.eql('Wallet Different Currency');",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "01970000-0000-7000-8000-000000000307",
+						"description": "UUID v7 identifiant la demande"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"debtorWalletId\": \"{{martinEurWallet}}\",\n  \"creditorWalletId\": \"{{martinUsdWallet}}\",\n  \"amount\": \"1000\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseUrl}}/transfers",
+				"description": "Critère 6. Martin EUR vers Martin USD est refusé (422 Wallet Different Currency). Aucun mouvement n'est créé."
+			}
+		},
+		{
+			"name": "7. Débit et crédit immuables",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"const created = pm.response.json();",
+							"",
+							"pm.test('le débit et le crédit ont le même montant', function () {",
+							"    pm.response.to.have.status(201);",
+							"    pm.expect(created).to.be.an('array').with.lengthOf(2);",
+							"    const debit = created.find((row) => row.direction === 'DEBIT');",
+							"    const credit = created.find((row) => row.direction === 'CREDIT');",
+							"    pm.expect(debit.amount).to.eql('3300');",
+							"    pm.expect(credit.amount).to.eql(debit.amount);",
+							"    pm.expect(debit.idempotencyKeyId).to.eql('01970000-0000-7000-8000-000000000308');",
+							"    pm.expect(credit.idempotencyKeyId).to.eql('01970000-0000-7000-8000-000000000308');",
+							"});",
+							"",
+							"const baseUrl = pm.collectionVariables.get('baseUrl');",
+							"const movementId = created[0].id;",
+							"const patch = await pm.sendRequest({",
+							"    url: baseUrl + '/transfers/' + movementId,",
+							"    method: 'PATCH',",
+							"    header: { 'Content-Type': 'application/json' },",
+							"    body: { mode: 'raw', raw: JSON.stringify({ amount: '1' }) },",
+							"});",
+							"const remove = await pm.sendRequest({",
+							"    url: baseUrl + '/transfers/' + movementId,",
+							"    method: 'DELETE',",
+							"});",
+							"",
+							"pm.test('un mouvement passé ne peut pas être modifié', function () {",
+							"    pm.expect(patch).to.have.property('code', 404);",
+							"});",
+							"",
+							"pm.test('un mouvement passé ne peut pas être supprimé', function () {",
+							"    pm.expect(remove).to.have.property('code', 404);",
+							"});"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Idempotency-Key",
+						"value": "01970000-0000-7000-8000-000000000308",
+						"description": "UUID v7 identifiant la demande"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"debtorWalletId\": \"{{martinEurWallet}}\",\n  \"creditorWalletId\": \"{{durandEurWallet}}\",\n  \"amount\": \"3300\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseUrl}}/transfers",
+				"description": "Critère 7. La réponse expose le débit et le crédit du même montant. Le controller ne propose ni modification ni suppression : PATCH et DELETE sur le mouvement créé répondent 404."
+			}
+		}
+	]
+}

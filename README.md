@@ -102,3 +102,16 @@ La structure du contexte ledger est un point de départ, pas une contrainte. Le 
 - [TICKET.md](docs/TICKET.md) : l'énoncé
 - [DECISIONS.md](docs/DECISIONS.md) : tes choix, à compléter
 - [docs/ledger/glossary.md](docs/ledger/glossary.md) : le langage du contexte ledger
+
+## Tests
+
+Pour tester les différents critères d'acceptation listés dans [TICKET.md](docs/TICKET.md), vous aurez à votre diposition une collection Postman se trouvant à la racine du projet dans un dossier `postman`.
+
+Afin de pouvoir lancer les requêtes, voici la marche à suvire :
+1. Lancer la commande `npm run db:reset` afin de re-seed la base de données avec les migrations
+2. Lancer l'API via la commande `npm run start:dev`
+3. Dans `Postman` :
+   1. Y importer la collection `transfer.postman_collection.json`
+   2. Lancer les requêtes dans l'ordre croissant
+
+> ⚠️ Les requêtes ne pourront être exécutées qu'une seule fois avant un nouveau `reset`
