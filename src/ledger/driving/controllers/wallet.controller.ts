@@ -1,7 +1,8 @@
 import { Controller, Get, Inject, Param, ParseUUIDPipe, UseFilters } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiNotFoundResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { WalletUseCase } from '../../application/use-cases/wallet.use-case.js';
-import { EntryResponse, WalletResponse } from '../dto/output/wallet.response.js';
+import { TransferResponse } from '../dto/output/transfer.output-dto.js';
+import { WalletResponse } from '../dto/output/wallet.output-dto.js';
 import { WalletNotFoundFilter } from '../filters/wallet-not-found.filter.js';
 
 @ApiTags('Wallets')
@@ -22,13 +23,13 @@ export class WalletController {
 		return new WalletResponse(await this.#wallets.getWallet(walletId));
 	}
 
-	@Get(':walletId/entries')
-	@ApiOkResponse({ type: [EntryResponse] })
+	@Get(':walletId/transfers')
+	@ApiOkResponse({ type: [TransferResponse] })
 	@ApiBadRequestResponse({ description: 'walletId is not a UUID' })
 	@ApiNotFoundResponse({ description: 'Wallet not found' })
-	async listEntries(@Param('walletId', ParseUUIDPipe) walletId: string): Promise<EntryResponse[]> {
-		const entries = await this.#wallets.listEntries(walletId);
+	async listTransfers(@Param('walletId', ParseUUIDPipe) walletId: string): Promise<TransferResponse[]> {
+		const transfers = await this.#wallets.listTransfers(walletId);
 
-		return entries.map((entry) => new EntryResponse(entry));
+		return transfers.map((transfer) => new TransferResponse(transfer));
 	}
 }

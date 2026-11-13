@@ -16,6 +16,7 @@ export async function givenWallet(prisma: PrismaClient, wallet: WalletFixture = 
 			id: wallet.id ?? randomUUID(),
 			holderId: wallet.holderId ?? randomUUID(),
 			currency: wallet.currency ?? 'EUR',
+			balance,
 			entries: balance === 0n ? undefined : { create: { id: randomUUID(), direction: 'CREDIT', amount: balance } },
 		},
 	});

@@ -1,29 +1,29 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { WalletNotFoundError } from '../../domain/errors/wallet-not-found.error.js';
-import type { Entry } from '../../domain/models/entities/entry.js';
-import type { Wallet } from '../../domain/models/entities/wallet.js';
-import { WalletPort } from '../../domain/ports/wallet.port.js';
+import { WalletNotFoundException } from '../../domain/errors/wallet-not-found-exception.error.js';
+import { Transfer } from '../../domain/models/entities/transfer.entity.js';
+import type { Wallet } from '../../domain/models/entities/wallet.entity.js';
+import { WalletRepositoryPort } from '../../domain/ports/wallet.repository.port.js';
 
 @Injectable()
 export class WalletUseCase {
-	readonly #wallets: WalletPort;
+	readonly #wallets: WalletRepositoryPort;
 
-	constructor(@Inject(WalletPort) wallets: WalletPort) {
+	constructor(@Inject(WalletRepositoryPort) wallets: WalletRepositoryPort) {
 		this.#wallets = wallets;
 	}
 
 	async getWallet(walletId: string): Promise<Wallet> {
 		const wallet = await this.#wallets.findById(walletId);
 		if (!wallet) {
-			throw new WalletNotFoundError(walletId);
+			throw new WalletNotFoundException(walletId);
 		}
 
 		return wallet;
 	}
 
-	async listEntries(walletId: string): Promise<Entry[]> {
+	async listTransfers(walletId: string): Promise<Transfer[]> {
 		await this.getWallet(walletId);
 
-		return this.#wallets.findEntries(walletId);
+		return this.#wallets.findTransfers(walletId);
 	}
 }

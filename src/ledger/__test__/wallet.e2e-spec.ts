@@ -36,7 +36,15 @@ describe('Wallets', () => {
 
 	it('computes the balance as credits minus debits', async () => {
 		const wallet = await givenWallet(prisma, { balance: 1000n });
-		await prisma.entry.create({ data: { id: randomUUID(), walletId: wallet.id, direction: 'DEBIT', amount: 250n } });
+		await prisma.transfer.create({
+			data: {
+				id: randomUUID(),
+				walletId: wallet.id,
+				direction: 'DEBIT',
+				amount: 250n,
+				idempotencyKeyId: randomUUID(),
+			},
+		});
 
 		const response = await request(app.getHttpServer()).get(`/wallets/${wallet.id}`).expect(200);
 
